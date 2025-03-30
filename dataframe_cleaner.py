@@ -26,7 +26,9 @@ def clean_cases_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
     # Convert date and rename
-    df["Date_of_publication"] = pd.to_datetime(df["Date_of_publication"], errors="coerce")
+    df["Date_of_publication"] = pd.to_datetime(
+        df["Date_of_publication"], errors="coerce"
+    )
     df.rename(columns={"Date_of_publication": "Date"}, inplace=True)
 
     # Drop non-municipal rows
@@ -43,10 +45,9 @@ def clean_cases_df(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Re-aggregate if necessary
-    df = (
-        df.groupby(["Date", "Municipality_code", "Municipality_name", "Province"], as_index=False)
-        .agg({"Total_reported": "sum", "Deceased": "sum"})
-    )
+    df = df.groupby(
+        ["Date", "Municipality_code", "Municipality_name", "Province"], as_index=False
+    ).agg({"Total_reported": "sum", "Deceased": "sum"})
 
     # Add Year and Month columns
     df["Year"] = df["Date"].dt.year
@@ -86,16 +87,16 @@ def clean_hospital_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df.dropna(subset=["Municipality_code", "Municipality_name"])
 
     # Aggregate duplicates
-    df = (
-        df.groupby(["Date", "Municipality_code", "Municipality_name"], as_index=False)
-        .agg({"Hospital_admission": "sum"})
-    )
+    df = df.groupby(
+        ["Date", "Municipality_code", "Municipality_name"], as_index=False
+    ).agg({"Hospital_admission": "sum"})
 
     # Add Year and Month
     df["Year"] = df["Date"].dt.year
     df["Month"] = df["Date"].dt.to_period("M")
 
     return df
+
 
 def clean_population_df(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -127,11 +128,13 @@ def clean_population_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df[df["RegioS"].str.startswith("GM")]
 
     # Rename columns
-    df = df.rename(columns={
-        "RegioS": "Municipality_code",
-        "Perioden": "Year",
-        "TotaleBevolking_1": "Population"
-    })
+    df = df.rename(
+        columns={
+            "RegioS": "Municipality_code",
+            "Perioden": "Year",
+            "TotaleBevolking_1": "Population",
+        }
+    )
 
     # Convert columns
     df["Year"] = df["Year"].str.extract(r"(\d{4})").astype(int)
@@ -162,23 +165,40 @@ def clean_population_df(df: pd.DataFrame) -> pd.DataFrame:
 
     # Handle Haaren (GM0788) splitting of population over 4 existing municipalities
     haaren_code = "GM0788"
-    receiving_codes = ["GM0824", "GM0865", "GM0757", "GM0855"]  # Oisterwijk, Vught, Boxtel, Tilburg
+    receiving_codes = [
+        "GM0824",
+        "GM0865",
+        "GM0757",
+        "GM0855",
+    ]  # Oisterwijk, Vught, Boxtel, Tilburg
 
-    haaren_valid_rows = df[(df["Municipality_code"] == haaren_code) & (df["Population"].notna())]
+    haaren_valid_rows = df[
+        (df["Municipality_code"] == haaren_code) & (df["Population"].notna())
+    ]
     haaren_years = haaren_valid_rows["Year"].unique()
 
     for year in haaren_years:
-        haaren_population = haaren_valid_rows[haaren_valid_rows["Year"] == year]["Population"].values[0]
+        haaren_population = haaren_valid_rows[haaren_valid_rows["Year"] == year][
+            "Population"
+        ].values[0]
         split_population = haaren_population / 4
 
         for code in receiving_codes:
             mask = (df["Municipality_code"] == code) & (df["Year"] == year)
             if df[mask].empty:
-                df = pd.concat([df, pd.DataFrame({
-                    "Municipality_code": [code],
-                    "Year": [year],
-                    "Population": [split_population]
-                })], ignore_index=True)
+                df = pd.concat(
+                    [
+                        df,
+                        pd.DataFrame(
+                            {
+                                "Municipality_code": [code],
+                                "Year": [year],
+                                "Population": [split_population],
+                            }
+                        ),
+                    ],
+                    ignore_index=True,
+                )
             else:
                 df.loc[mask, "Population"] += split_population
 
@@ -186,10 +206,8 @@ def clean_population_df(df: pd.DataFrame) -> pd.DataFrame:
     df = df[df["Municipality_code"] != haaren_code]
 
     # Final aggregation
-    df = (
-        df.groupby(["Municipality_code", "Year"], as_index=False)
-        .agg({"Population": "sum"})
+    df = df.groupby(["Municipality_code", "Year"], as_index=False).agg(
+        {"Population": "sum"}
     )
 
     return df
-
