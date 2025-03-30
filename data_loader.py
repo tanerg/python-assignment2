@@ -58,8 +58,8 @@ def load_cases_data(file1: Path, file2: Path) -> pd.DataFrame:
         A raw, concatenated DataFrame with the original column names from the CSV files.
         Cleaning and preprocessing should be done separately.
     """
-    df1 = pd.read_csv(file1, sep=';', low_memory=False)
-    df2 = pd.read_csv(file2, sep=';', low_memory=False)
+    df1 = pd.read_csv(file1, sep=";", low_memory=False)
+    df2 = pd.read_csv(file2, sep=";", low_memory=False)
     return pd.concat([df1, df2], ignore_index=True)
 
 
@@ -83,8 +83,8 @@ def load_hospital_data(file1: Path, file2: Path) -> pd.DataFrame:
         A raw, concatenated DataFrame containing hospital data as originally stored in the files.
         Cleaning and preprocessing should be handled elsewhere.
     """
-    df1 = pd.read_csv(file1, sep=';', low_memory=False)
-    df2 = pd.read_csv(file2, sep=';', low_memory=False)
+    df1 = pd.read_csv(file1, sep=";", low_memory=False)
+    df2 = pd.read_csv(file2, sep=";", low_memory=False)
     return pd.concat([df1, df2], ignore_index=True)
 
 
@@ -106,4 +106,4 @@ def load_population_data(file_path: Path) -> pd.DataFrame:
     pd.DataFrame
         A raw DataFrame with the contents of the population dataset as-is.
     """
-    return pd.read_csv(file_path, sep=';', low_memory=False)
+    return pd.read_csv(file_path, sep=";", low_memory=False)
