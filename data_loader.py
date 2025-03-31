@@ -1,6 +1,8 @@
 import requests
 from pathlib import Path
 import pandas as pd
+import geopandas as gpd
+from shapely.geometry import shape
 
 
 def download_data_from_url(url: str, save_path: Path) -> None:
@@ -38,50 +40,21 @@ def download_data_from_url(url: str, save_path: Path) -> None:
     print(f"Downloaded: {url}: {save_path}")
 
 
-def load_cases_data(file1: Path, file2: Path) -> pd.DataFrame:
+def load_and_concatenate_csv(file1: Path, file2: Path) -> pd.DataFrame:
     """
-    Load and concatenate two raw CSV files containing COVID-19 reported case data per municipality.
-
-    This function simply loads the files and combines them in order. It does not perform
-    any cleaning, date conversion, or column renaming. Use `dataframe_cleaner` for that.
+    Load and concatenate two semicolon-separated CSV files into a single DataFrame.
 
     Parameters
     ----------
     file1 : Path
-        Path to the more recent dataset (after October 3, 2021).
+        Path to the first CSV file.
     file2 : Path
-        Path to the earlier dataset (up to and including October 3, 2021).
+        Path to the second CSV file.
 
     Returns
     -------
     pd.DataFrame
-        A raw, concatenated DataFrame with the original column names from the CSV files.
-        Cleaning and preprocessing should be done separately.
-    """
-    df1 = pd.read_csv(file1, sep=";", low_memory=False)
-    df2 = pd.read_csv(file2, sep=";", low_memory=False)
-    return pd.concat([df1, df2], ignore_index=True)
-
-
-def load_hospital_data(file1: Path, file2: Path) -> pd.DataFrame:
-    """
-    Load and concatenate two raw CSV files containing hospital admission data per municipality.
-
-    This function reads both CSV files and returns a single combined DataFrame without
-    applying any cleaning or transformations. Column names and data types remain unchanged.
-
-    Parameters
-    ----------
-    file1 : Path
-        Path to the more recent hospital dataset (after October 3, 2021).
-    file2 : Path
-        Path to the earlier hospital dataset (up to and including October 3, 2021).
-
-    Returns
-    -------
-    pd.DataFrame
-        A raw, concatenated DataFrame containing hospital data as originally stored in the files.
-        Cleaning and preprocessing should be handled elsewhere.
+        Concatenated raw DataFrame from both files.
     """
     df1 = pd.read_csv(file1, sep=";", low_memory=False)
     df2 = pd.read_csv(file2, sep=";", low_memory=False)
@@ -107,3 +80,58 @@ def load_population_data(file_path: Path) -> pd.DataFrame:
         A raw DataFrame with the contents of the population dataset as-is.
     """
     return pd.read_csv(file_path, sep=";", low_memory=False)
+
+
+def load_municipality_geodata(
+    save_path: str = "datasets/municipalities_2023.geojson",
+    force_download: bool = False,
+) -> gpd.GeoDataFrame:
+    """
+    Fetch or load Dutch municipality boundary data (2023) from PDOK WFS.
+
+    Parameters
+    ----------
+    save_path : str
+        Path to save the GeoJSON file if downloaded. Defaults to datasets/municipalities_2023.geojson.
+    force_download : bool
+        If True, re-downloads the data even if the file already exists locally.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        Municipality geometries and metadata.
+    """
+    save_path = Path(save_path)
+    if save_path.exists() and not force_download:
+        print(f"Loading municipality data from {save_path}")
+        return gpd.read_file(save_path)
+
+    # Define WFS endpoint and parameters
+    url = "https://service.pdok.nl/cbs/gebiedsindelingen/2023/wfs/v1_0"
+    params = {
+        "service": "WFS",
+        "version": "2.0.0",
+        "request": "GetFeature",
+        "typename": "gebiedsindelingen:gemeente_gegeneraliseerd",
+        "outputFormat": "application/json",
+        "srsName": "EPSG:4326",
+    }
+
+    print("Downloading municipality data from PDOK...")
+    response = requests.get(url, params=params)
+    response.raise_for_status()
+    data = response.json()
+
+    # Extract geometries and properties
+    features = data["features"]
+    geoms = [shape(feature["geometry"]) for feature in features]
+    props = [feature["properties"] for feature in features]
+
+    gdf = gpd.GeoDataFrame(props, geometry=geoms, crs="EPSG:4326")
+
+    # Save to disk
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    gdf.to_file(save_path, driver="GeoJSON")
+    print(f"Saved municipality data to {save_path}")
+
+    return gdf
