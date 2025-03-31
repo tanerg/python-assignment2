@@ -1,3 +1,5 @@
 .DS_Store
 .ipynb_checkpoints/
 Assignment2_CovidDashboard.ipynbAssignment2_CovidDashboard Test.ipynb
+__pycache__/
+*.parquet
