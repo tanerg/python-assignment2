@@ -3,6 +3,95 @@
 ## Overview
 This document outlines the steps taken to prepare, clean, combine, and visualize Covid-19 data. The goal was to create an interactive dashboard that clearly shows trends in cases, hospital admissions, and deaths across the Netherlands at different locations and time periods.
 
+
+---
+
+## Project Structure Explanation
+
+### **Directory Overview**
+
+```text
+src/
+├── config/
+│   └── constants.py
+├── data/
+│   ├── loader.py
+│   └── preprocessing.py
+├── visualization/
+│   ├── plotter.py
+│   └── widgets.py
+├── dashboard.ipynb
+└── main.py
+```
+
+### **Configuration**
+
+- **`config/constants.py`**
+  - Contains constant values and configurations.
+  - Example contents:
+    - Mapping of month numbers to month names (`MONTH_MAPPING`).
+    - Color codes used in visualizations (`COLOR_MAPPING`).
+
+---
+
+### **Data Handling**
+
+- **`data/loader.py`**
+  - Responsible for loading and preparing datasets.
+  - Typical function:
+    - `load_cleaned_data(filepath)`: Loads CSV data and sets correct data types.
+
+- **`data/preprocessing.py`**
+  - Contains functions for filtering and processing the data.
+  - Typical function:
+    - `filter_dataframe(df, year, province, municipality)`: Filters data based on user selections from the widgets.
+
+---
+
+### **Visualization**
+
+- **`visualization/widgets.py`**
+  - Defines interactive widgets used in the dashboard.
+  - Examples:
+    - Dropdowns (Year, Province, Municipality selection)
+    - Checkboxes (Cases, Deaths, Hospital Admissions)
+    - Radio buttons (Aggregation options: Year, Months, Municipalities)
+
+- **`visualization/plotter.py`**
+  - Creates interactive plots using Plotly.
+  - Typical function:
+    - `generate_bar_chart(...)`: Generates bar charts based on filtered data, applying consistent colors and layout.
+
+---
+
+### **Application Logic**
+
+- **`main.py`**
+  - Central Python script integrating all functionalities.
+  - Provides the main interactive dashboard logic through a callable function (`run_dashboard()`).
+  - Coordinates data loading, preprocessing, widget interactions, and visualizations.
+
+---
+
+### **Interactive Dashboard Notebook**
+
+- **`dashboard.ipynb`**
+  - Jupyter notebook serving as the user interface for running and interacting with the dashboard.
+  - Calls and orchestrates components from all previously mentioned files.
+
+---
+
+This structured approach clearly organizes the project into logical sections, enhancing readability, maintainability, and extensibility.
+"""
+
+# Save this markdown content to a file
+markdown_file_path = '/mnt/data/project_structure.md'
+with open(markdown_file_path, 'w') as file:
+    file.write(markdown_content)
+
+markdown_file_path
+
+
 ## Data Sources
 The data was sourced from official Dutch repositories providing:
 - Covid-19 reported cases.
@@ -41,7 +130,6 @@ Developed using Python libraries:
 - **ipywidgets**: Interactive controls within Jupyter Notebook.
 
 Dashboard features:
-
 
 ## Challenges and Resolutions
 
