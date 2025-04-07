@@ -211,3 +211,32 @@ def clean_population_df(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     return df
+
+
+def cast_column_types(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Cast standard columns to appropriate types (int, datetime, etc.).
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The cleaned but untyped DataFrame.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with proper column types enforced.
+    """
+    df = df.copy()
+
+    if "Year" in df.columns:
+        df["Year"] = df["Year"].astype(int)
+
+    if "Month" in df.columns and df["Month"].dtype.name != "period[M]":
+        df["Month"] = pd.to_datetime(df["Month"]).dt.to_period("M")
+
+    for col in ["Total_reported", "Deceased", "Hospital_admission", "Population"]:
+        if col in df.columns:
+            df[col] = df[col].fillna(0).astype(int)
+
+    return df
