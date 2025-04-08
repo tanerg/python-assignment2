@@ -2,6 +2,7 @@ import plotly.express as px
 from config.constants import COLOR_MAPPING
 import pandas as pd
 from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 
 def generate_bar_chart(df_grouped, x_axis, metrics, title):
     # Create nice metric names dictionary
@@ -329,5 +330,122 @@ def generate_municipality_chart(df_filtered, metrics, title):
         for i in range(1, len(top_municipalities)):
             line_position = i * len(metrics_list) - 0.5
             fig.add_vline(x=line_position, line_width=1, line_color="gray", line_dash="dash")
+
+    return fig
+
+def generate_incidence_line_chart(df_filtered, metrics, title, month_mapping):
+    """
+    Generate a line chart showing incidence rates over time.
+
+    Parameters:
+    -----------
+    df_filtered : pd.DataFrame
+        Filtered dataframe with incidence rate columns
+    metrics : list
+        List of incidence rate metrics to include
+    title : str
+        Chart title
+    month_mapping : dict
+        Dictionary mapping numeric months to month names
+
+    Returns:
+    --------
+    plotly.graph_objects.Figure
+        Line chart showing incidence rates over time
+    """
+    # Create nice metric names dictionary
+    metric_labels = {
+        'Incidence_rate_cases': 'Case Rate (per 100k)',
+        'Incidence_rate_deaths': 'Death Rate (per 100k)',
+        'Incidence_rate_hospital_admission': 'Hospitalization Rate (per 100k)'
+    }
+
+    # Ensure we have data to plot
+    if df_filtered.empty:
+        fig = px.line(
+            x=[0], y=[0],
+            title=f"{title} - No data available"
+        )
+        return fig
+
+    # Make a copy to avoid modifying the original
+    df_plot = df_filtered.copy()
+
+    # Ensure Year is present as needed for grouping
+    if 'Year' not in df_plot.columns and 'Year_str' in df_plot.columns:
+        df_plot['Year'] = df_plot['Year_str'].astype(int)
+
+    # Prepare data for time-based visualization
+    # If Month column exists, use it for x-axis
+    if 'Month' in df_plot.columns:
+        # If Month is numeric, map to names
+        if pd.api.types.is_numeric_dtype(df_plot['Month']):
+            df_plot['Month_name'] = df_plot['Month'].map(month_mapping)
+            time_column = 'Month_name'
+        # If Month is already a string or object type
+        else:
+            # If it's a period, convert to string
+            if isinstance(df_plot['Month'].iloc[0], pd.Period):
+                df_plot['Month_str'] = df_plot['Month'].dt.strftime('%Y-%m')
+                time_column = 'Month_str'
+            else:
+                time_column = 'Month'
+    # If no Month column, try to use Date
+    elif 'Date' in df_plot.columns:
+        time_column = 'Date'
+    else:
+        # Fallback to Year if no month or date
+        time_column = 'Year'
+
+    # Group by time and region (province or municipality) if available
+    group_cols = [time_column]
+
+    if 'Province' in df_plot.columns:
+        group_cols.append('Province')
+        color_column = 'Province'
+    elif 'Municipality_name' in df_plot.columns:
+        group_cols.append('Municipality_name')
+        color_column = 'Municipality_name'
+    else:
+        color_column = None
+
+    # If using months, ensure proper ordering
+    if time_column == 'Month_name' and 'Month' in df_plot.columns:
+        # Create a sort key based on numeric month
+        df_plot['month_sort'] = df_plot['Month']
+        df_plot = df_plot.sort_values(['Year', 'month_sort'])
+
+    # Group and aggregate the data
+    if 'Month' in df_plot.columns or 'Date' in df_plot.columns:
+        df_grouped = df_plot.groupby(group_cols, observed=True)[metrics].mean().reset_index()
+    else:
+        df_grouped = df_plot
+
+    # Create the line chart
+    fig = px.line(
+        df_grouped,
+        x=time_column,
+        y=metrics,
+        color=color_column,
+        markers=True,  # Show markers at data points
+        title=title,
+        labels={m: metric_labels.get(m, m) for m in metrics},
+        hover_data={time_column: True, color_column: True if color_column else False}
+    )
+
+    # Improve layout
+    fig.update_layout(
+        height=600,
+        width=1200,
+        xaxis_title="Time Period",
+        yaxis_title="Incidence Rate (per 100,000 population)",
+        legend_title=color_column if color_column else "Metric",
+        hovermode="x unified"  # Show all points at the same x-value
+    )
+
+    # Add range slider for date/time selection
+    has_multiple_periods = len(df_grouped[time_column].unique()) > 3
+    if has_multiple_periods:
+        fig.update_xaxes(rangeslider_visible=True)
 
     return fig

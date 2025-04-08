@@ -17,7 +17,7 @@ from visualization.widgets import (
     create_municipality_dropdown, create_metric_checkboxes,
     create_aggregation_radio
 )
-from visualization.plotter import generate_bar_chart, generate_monthly_chart, generate_municipality_chart
+from visualization.plotter import generate_bar_chart, generate_monthly_chart, generate_municipality_chart, generate_incidence_line_chart
 from config.constants import MONTH_MAPPING
 
 def run_dashboard(data_path='../data/data_cleaned.csv'):
@@ -29,12 +29,34 @@ def run_dashboard(data_path='../data/data_cleaned.csv'):
     cases_checkbox, deaths_checkbox, hospital_checkbox = create_metric_checkboxes()
     aggregation_radio = create_aggregation_radio()
 
+    # Add chart type selector for counts vs incidence rates
+    chart_type_radio = widgets.RadioButtons(
+        options=['Counts', 'Incidence Rates'],
+        description='Chart Type:',
+        value='Counts'
+    )
+
+    # Set behavior based on chart type
+    def update_for_chart_type(change):
+        # Show/hide aggregation radio based on chart type
+        if change['new'] == 'Incidence Rates':
+            # Hide aggregation radio when viewing incidence rates
+            aggregation_radio.layout.display = 'none'
+        else:
+            # Show aggregation radio when viewing counts
+            aggregation_radio.layout.display = 'block'
+
+            # Update aggregation options based on province/municipality
+            update_aggregation_options()
+
+    chart_type_radio.observe(update_for_chart_type, 'value')
+
     controls = widgets.VBox([
         year_dropdown,
         widgets.HBox([cases_checkbox, deaths_checkbox, hospital_checkbox]),
         province_dropdown,
         municipality_dropdown,
-        aggregation_radio
+        widgets.HBox([aggregation_radio, chart_type_radio])
     ])
 
     output = widgets.Output()
@@ -51,12 +73,18 @@ def run_dashboard(data_path='../data/data_cleaned.csv'):
             municipality_dropdown.disabled = True
 
     def update_aggregation_options(*args):
+        # Skip if we're viewing incidence rates (aggregation is hidden)
+        if chart_type_radio.value == 'Incidence Rates':
+            return
+
         if province_dropdown.value == 'Netherlands':
             # For Netherlands, only allow Year and Months aggregation
             aggregation_radio.options = ['Year', 'Months']
         elif municipality_dropdown.disabled or municipality_dropdown.value == 'All':
+            # Allow all aggregation options for province level
             aggregation_radio.options = ['Year', 'Months', 'Municipalities']
         else:
+            # For specific municipalities, only allow Year and Months
             aggregation_radio.options = ['Year', 'Months']
             if aggregation_radio.value == 'Municipalities':
                 aggregation_radio.value = 'Year'
@@ -76,23 +104,27 @@ def run_dashboard(data_path='../data/data_cleaned.csv'):
             selected_province = province_dropdown.value
             selected_year = year_dropdown.value
 
-            # Determine x_axis based on aggregation selection and province
-            if selected_province == 'Netherlands':
-                x_axis = 'Month' if aggregation_radio.value == 'Months' else 'Year'
-            elif selected_province == 'All Provinces':
-                if aggregation_radio.value == 'Municipalities':
-                    x_axis = 'Municipality_name'
-                elif aggregation_radio.value == 'Months':
-                    x_axis = 'Month'
-                else:
-                    x_axis = 'Province'
+            # For incidence rates, we don't use aggregation_radio.value
+            if chart_type_radio.value == 'Incidence Rates':
+                title_suffix = 'Incidence Rates'
             else:
-                x_axis = 'Municipality_name' if aggregation_radio.value == 'Municipalities' else 'Month' if aggregation_radio.value == 'Months' else 'Year'
+                # Determine x_axis based on aggregation selection and province
+                if selected_province == 'Netherlands':
+                    x_axis = 'Month' if aggregation_radio.value == 'Months' else 'Year'
+                elif selected_province == 'All Provinces':
+                    if aggregation_radio.value == 'Municipalities':
+                        x_axis = 'Municipality_name'
+                    elif aggregation_radio.value == 'Months':
+                        x_axis = 'Month'
+                    else:
+                        x_axis = 'Province'
+                else:
+                    x_axis = 'Municipality_name' if aggregation_radio.value == 'Municipalities' else 'Month' if aggregation_radio.value == 'Months' else 'Year'
 
-            title_suffix = aggregation_radio.value
+                title_suffix = aggregation_radio.value
 
-            # Map numeric months to names with explicit ordering
-            if x_axis == 'Month':
+            # Map numeric months to names with explicit ordering - only needed for Counts with Month x-axis
+            if chart_type_radio.value == 'Counts' and x_axis == 'Month':
                 month_order = list(MONTH_MAPPING.values())
                 df_filtered = df_filtered.copy()
                 df_filtered['Month'] = df_filtered['Month'].map(MONTH_MAPPING).astype(
@@ -102,14 +134,23 @@ def run_dashboard(data_path='../data/data_cleaned.csv'):
             # Reset index before grouping to avoid alignment errors
             df_filtered = df_filtered.reset_index(drop=True)
 
-            # Determine aggregation logic based on year selection
-            metrics = []
-            if cases_checkbox.value:
-                metrics.append('Total_reported')
-            if deaths_checkbox.value:
-                metrics.append('Deceased')
-            if hospital_checkbox.value:
-                metrics.append('Hospital_admission')
+            # Determine metrics based on chart type
+            if chart_type_radio.value == 'Counts':
+                metrics = []
+                if cases_checkbox.value:
+                    metrics.append('Total_reported')
+                if deaths_checkbox.value:
+                    metrics.append('Deceased')
+                if hospital_checkbox.value:
+                    metrics.append('Hospital_admission')
+            else:  # Incidence Rates
+                metrics = []
+                if cases_checkbox.value:
+                    metrics.append('Incidence_rate_cases')
+                if deaths_checkbox.value:
+                    metrics.append('Incidence_rate_deaths')
+                if hospital_checkbox.value:
+                    metrics.append('Incidence_rate_hospital_admission')
 
             if not metrics:
                 return
@@ -118,7 +159,7 @@ def run_dashboard(data_path='../data/data_cleaned.csv'):
             title_parts = ['Covid-19 Overview']
 
             # Add appropriate province information to title
-            if selected_province == 'All Provinces' and aggregation_radio.value == 'Months':
+            if selected_province == 'All Provinces' and chart_type_radio.value == 'Counts' and aggregation_radio.value == 'Months':
                 title_parts.append('All Provinces - Aggregated')
             elif selected_province == 'Netherlands':
                 title_parts.append('Netherlands')
@@ -129,50 +170,62 @@ def run_dashboard(data_path='../data/data_cleaned.csv'):
             if not municipality_dropdown.disabled and municipality_dropdown.value != 'All':
                 title_parts.append(municipality_dropdown.value)
 
+            # Add metric type
             title_parts.append(title_suffix)
             title_parts.append(str(selected_year))
             title = ' - '.join(title_parts)
 
-            # Case 1: 'All' years selected + Netherlands or All Provinces + Year aggregation
-            if selected_year == 'All' and (selected_province == 'Netherlands' or selected_province == 'All Provinces') and aggregation_radio.value == 'Year':
-                # Group by Year
-                df_grouped = df_filtered.groupby('Year', as_index=False, observed=True).agg({
-                    'Total_reported': 'sum',
-                    'Deceased': 'sum',
-                    'Hospital_admission': 'sum'
-                })
-                # Generate regular bar chart with Year on x-axis
-                fig = generate_bar_chart(df_grouped, 'Year', metrics, title)
-
-            # Case 2: 'All' years selected + Month aggregation (for any province selection)
-            elif selected_year == 'All' and aggregation_radio.value == 'Months':
-                # Handle All Provinces case - combine data before passing to visualization
-                if selected_province == 'All Provinces':
-                    df_filtered = df_filtered.groupby(['Month', 'Year'], observed=True).agg({
+            # Determine which visualization to use based on chart type
+            if chart_type_radio.value == 'Incidence Rates':
+                # For incidence rates, always use the line chart
+                fig = generate_incidence_line_chart(
+                    df_filtered,
+                    metrics,
+                    title,
+                    MONTH_MAPPING
+                )
+            else:
+                # Use regular visualizations for counts based on aggregation setting
+                # Case 1: 'All' years selected + Netherlands or All Provinces + Year aggregation
+                if selected_year == 'All' and (selected_province == 'Netherlands' or selected_province == 'All Provinces') and aggregation_radio.value == 'Year':
+                    # Group by Year
+                    df_grouped = df_filtered.groupby('Year', as_index=False, observed=True).agg({
                         'Total_reported': 'sum',
                         'Deceased': 'sum',
                         'Hospital_admission': 'sum'
-                    }).reset_index()
+                    })
+                    # Generate regular bar chart with Year on x-axis
+                    fig = generate_bar_chart(df_grouped, 'Year', metrics, title)
 
-                # Use the refactored monthly chart generator
-                fig = generate_monthly_chart(df_filtered, metrics, title, MONTH_MAPPING)
+                # Case 2: 'All' years selected + Month aggregation (for any province selection)
+                elif selected_year == 'All' and aggregation_radio.value == 'Months':
+                    # Handle All Provinces case - combine data before passing to visualization
+                    if selected_province == 'All Provinces':
+                        df_filtered = df_filtered.groupby(['Month', 'Year'], observed=True).agg({
+                            'Total_reported': 'sum',
+                            'Deceased': 'sum',
+                            'Hospital_admission': 'sum'
+                        }).reset_index()
 
-            # Case 3: 'All' years selected + Municipalities aggregation
-            elif selected_year == 'All' and aggregation_radio.value == 'Municipalities':
-                # Use the refactored municipality chart generator
-                fig = generate_municipality_chart(df_filtered, metrics, title)
+                    # Use the refactored monthly chart generator
+                    fig = generate_monthly_chart(df_filtered, metrics, title, MONTH_MAPPING)
 
-            # All other cases
-            else:
-                # Group by the determined x_axis
-                df_grouped = df_filtered.groupby(x_axis, as_index=False, observed=True).agg({
-                    'Total_reported': 'sum',
-                    'Deceased': 'sum',
-                    'Hospital_admission': 'sum'
-                })
+                # Case 3: 'All' years selected + Municipalities aggregation
+                elif selected_year == 'All' and aggregation_radio.value == 'Municipalities':
+                    # Use the refactored municipality chart generator
+                    fig = generate_municipality_chart(df_filtered, metrics, title)
 
-                # Generate regular bar chart
-                fig = generate_bar_chart(df_grouped, x_axis, metrics, title)
+                # All other cases
+                else:
+                    # Group by the determined x_axis
+                    df_grouped = df_filtered.groupby(x_axis, as_index=False, observed=True).agg({
+                        'Total_reported': 'sum',
+                        'Deceased': 'sum',
+                        'Hospital_admission': 'sum'
+                    })
+
+                    # Generate regular bar chart
+                    fig = generate_bar_chart(df_grouped, x_axis, metrics, title)
 
             fig.show()
 
@@ -186,9 +239,15 @@ def run_dashboard(data_path='../data/data_cleaned.csv'):
     deaths_checkbox.observe(update_plot, 'value')
     hospital_checkbox.observe(update_plot, 'value')
 
+    # Add observer for the chart type radio
+    chart_type_radio.observe(update_plot, 'value')
+
     province_dropdown.observe(update_municipality_options, 'value')
     province_dropdown.observe(update_aggregation_options, 'value')
     municipality_dropdown.observe(update_aggregation_options, 'value')
+
+    # Make sure chart type changes update aggregation options
+    chart_type_radio.observe(update_aggregation_options, 'value')
 
     update_municipality_options()
     update_aggregation_options()
