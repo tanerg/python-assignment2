@@ -7,7 +7,7 @@ import pandas as pd
 
 
 def create_interactive_covid_map():
-    # === Load GeoDataFrames from disk ===
+    # Load data
     levels = {
         "Municipality": {
             "monthly": gpd.read_file("data/geodata/agg_mun_monthly.geojson"),
@@ -23,7 +23,7 @@ def create_interactive_covid_map():
         }
     }
 
-    # === Create widgets ===
+    # Define widgets
     level_dropdown = widgets.Dropdown(
         options=["Municipality", "Province", "National"],
         value="Municipality",
@@ -47,7 +47,7 @@ def create_interactive_covid_map():
 
     date_dropdown = widgets.Dropdown(description="Date:")
 
-    # === Update available dates ===
+    # Update dates function
     def update_dates(*args):
         df = levels[level_dropdown.value][aggregation_dropdown.value]
         dates = sorted(df["Date"].dropna().unique())
@@ -64,7 +64,7 @@ def create_interactive_covid_map():
     aggregation_dropdown.observe(update_dates, names="value")
     update_dates()
 
-    # === Draw Map ===
+    # Draw map function
     def draw_map(level, aggregation, stat_col, date_value):
         df = levels[level][aggregation]
         if aggregation == "monthly":
@@ -72,12 +72,12 @@ def create_interactive_covid_map():
         else:
             filtered = df[df["Date"].dt.strftime("%Y") == date_value].copy()
 
-        # Handle datelike columns
+        # Handle date-like columns
         for col in filtered.columns:
             if pd.api.types.is_datetime64_any_dtype(filtered[col]) or isinstance(filtered[col].dtype, pd.PeriodDtype):
                 filtered[col] = filtered[col].astype(str)
 
-        # Define olor scale
+        # Define color scale
         min_val = filtered[stat_col].min()
         max_val = filtered[stat_col].max()
         colormap = cm.linear.YlGnBu_09.scale(min_val, max_val)
