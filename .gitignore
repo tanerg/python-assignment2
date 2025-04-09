@@ -1,5 +1,9 @@
 .DS_Store
 .ipynb_checkpoints/
-Assignment2_CovidDashboard.ipynbAssignment2_CovidDashboard Test.ipynb
+Assignment2_CovidDashboard.ipynb
+Assignment2_CovidDashboard Test.ipynb
 __pycache__/
 *.parquet
+data/geodata/national_data.geojson
+data/geodata/province_data.geojson
+data/geodata/municipality_data.geojson
