@@ -272,7 +272,7 @@ def save_geodataframes(
     gdf_mun: gpd.GeoDataFrame,
     gdf_prov: gpd.GeoDataFrame,
     gdf_nl: gpd.GeoDataFrame,
-    output_dir: str = "geodata"
+    output_dir: str = "data/geodata"
 ) -> None:
     """
     Save municipality, province, and national GeoDataFrames to disk as GeoJSON files.
