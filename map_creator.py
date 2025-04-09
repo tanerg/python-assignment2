@@ -4,22 +4,23 @@ import ipywidgets as widgets
 from IPython.display import display
 import branca.colormap as cm
 import pandas as pd
+from pathlib import Path
 
 
-def create_interactive_covid_map():
+def create_interactive_covid_map(data_dir: Path = Path("data/geodata")):
     # Load data
     levels = {
         "Municipality": {
-            "monthly": gpd.read_file("data/geodata/agg_mun_monthly.geojson"),
-            "yearly": gpd.read_file("data/geodata/agg_mun_yearly.geojson")
+            "monthly": gpd.read_file(data_dir / "agg_mun_monthly.geojson"),
+            "yearly": gpd.read_file(data_dir / "agg_mun_yearly.geojson")
         },
         "Province": {
-            "monthly": gpd.read_file("data/geodata/agg_prov_monthly.geojson"),
-            "yearly": gpd.read_file("data/geodata/agg_prov_yearly.geojson")
+            "monthly": gpd.read_file(data_dir / "agg_prov_monthly.geojson"),
+            "yearly": gpd.read_file(data_dir / "agg_prov_yearly.geojson")
         },
         "National": {
-            "monthly": gpd.read_file("data/geodata/agg_nl_monthly.geojson"),
-            "yearly": gpd.read_file("data/geodata/agg_nl_yearly.geojson")
+            "monthly": gpd.read_file(data_dir / "agg_nl_monthly.geojson"),
+            "yearly": gpd.read_file(data_dir / "agg_nl_yearly.geojson")
         }
     }
 
