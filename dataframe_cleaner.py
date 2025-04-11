@@ -1,4 +1,5 @@
 import pandas as pd
+import geopandas as gpd
 
 
 def clean_cases_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -108,8 +109,7 @@ def clean_population_df(df: pd.DataFrame) -> pd.DataFrame:
     - Converts year format to integer.
     - Converts population values to numeric.
     - Merges outdated municipalities into their new equivalents.
-    - Handles Haaren (GM0788) by redistributing its population to 4 municipalities
-      only in years where Haaren has valid data.
+    - Handles Haaren (GM0788) by redistributing its population to 4 municipalities.
     - Aggregates population by year and municipality.
 
     Parameters
@@ -211,6 +211,97 @@ def clean_population_df(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     return df
+
+
+def aggregate_geo(gdf: gpd.GeoDataFrame, level: str) -> dict[str, gpd.GeoDataFrame]:
+    """
+    Generate monthly and yearly aggregated GeoDataFrames for COVID data,
+    properly handling population, name resolution, and geometry.
+
+    Parameters
+    ----------
+    gdf : geopandas.GeoDataFrame
+        The input GeoDataFrame with daily-level COVID and population data.
+    level : str
+        One of 'municipality', 'province', or 'national'.
+
+    Returns
+    -------
+    dict[str, gpd.GeoDataFrame]
+        Dictionary with keys 'monthly' and 'yearly', containing aggregated GeoDataFrames.
+    """
+
+    # Define grouping keys per level
+    group_keys = {
+        "municipality": ["Municipality_code"],
+        "province": ["Province"],
+        "national": []
+    }
+
+    group_cols = group_keys[level]
+
+    # Define aggregation rules
+    agg_funcs = {
+        "Total_reported": "sum",
+        "Deceased": "sum",
+        "Hospital_admission": "sum",
+        "Population": "first"
+    }
+
+    # Include name fields if present
+    if level == "municipality":
+        agg_funcs["Municipality_name"] = "first"
+
+    # Monthly aggregation
+    monthly = (
+        gdf[group_cols + ["Month"] + list(agg_funcs.keys())]
+        .groupby(group_cols + ["Month"], as_index=False)
+        .agg(agg_funcs)
+    )
+
+    for col, suffix in zip(["Total_reported", "Deceased", "Hospital_admission"],
+                           ["cases", "deaths", "hospital"]):
+        monthly[f"Incidence_rate_{suffix}"] = monthly[col] / monthly["Population"] * 100_000
+
+    if group_cols:
+        geometry_lookup = gdf[group_cols + ["geometry"]].drop_duplicates(subset=group_cols)
+        monthly = monthly.merge(geometry_lookup, on=group_cols, how="left")
+    else:
+        monthly["geometry"] = gdf["geometry"].iloc[0]
+
+    if "Month" in monthly.columns and not pd.api.types.is_datetime64_any_dtype(monthly["Month"]):
+        try:
+            monthly["Month"] = pd.to_datetime(monthly["Month"])
+        except Exception:
+            pass
+
+    if "Month" in monthly.columns:
+        if not pd.api.types.is_datetime64_any_dtype(monthly["Month"]):
+            monthly["Month"] = pd.to_datetime(monthly["Month"])
+    monthly["Date"] = monthly["Month"]
+
+    # Yearly aggregation
+    yearly = (
+        gdf[group_cols + ["Year"] + list(agg_funcs.keys())]
+        .groupby(group_cols + ["Year"], as_index=False)
+        .agg(agg_funcs)
+    )
+
+    for col, suffix in zip(["Total_reported", "Deceased", "Hospital_admission"],
+                           ["cases", "deaths", "hospital"]):
+        yearly[f"Incidence_rate_{suffix}"] = yearly[col] / yearly["Population"] * 100_000
+
+    if group_cols:
+        yearly = yearly.merge(geometry_lookup, on=group_cols, how="left")
+    else:
+        yearly["geometry"] = gdf["geometry"].iloc[0]
+
+    yearly["Date"] = pd.to_datetime(yearly["Year"].astype(int).astype(str) + "-01-01")
+
+    return {
+        "monthly": gpd.GeoDataFrame(monthly, crs=gdf.crs),
+        "yearly": gpd.GeoDataFrame(yearly, crs=gdf.crs),
+    }
 
 
 def cast_column_types(df: pd.DataFrame) -> pd.DataFrame:
