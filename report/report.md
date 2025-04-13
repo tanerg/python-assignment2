@@ -1,161 +1,148 @@
 # Covid-19 Dashboard Data Preparation and Visualization Report
 
 ## Overview
-This document outlines the steps taken to prepare, clean, combine, and visualize Covid-19 data. The goal was to create an interactive dashboard that clearly shows trends in cases, hospital admissions, and deaths across the Netherlands at different locations and time periods.
-
+For this assignment, we created interactive dashboard for displaying Covid-19 data in Netherlands. Our goal was to show how pandemic affected different regions and time periods. Dashboard allows users to see cases, hospital admissions and deaths with charts and maps.
 
 ---
 
-## Project Structure Explanation
+## Project Structure
 
 ### **Directory Overview**
 
 ```text
-src/
-├── config/
-│   └── constants.py
-├── data/
-│   ├── loader.py
-│   └── preprocessing.py
-├── visualization/
-│   ├── plotter.py
-│   └── widgets.py
-├── dashboard.ipynb
-└── main.py
+/
+├── data/                # Data files (raw and processed)
+│   ├── cases_1.csv      # Case data (first period)
+│   ├── cases_2.csv      # Case data (second period)
+│   ├── data_cleaned.csv # Combined and processed data
+│   └── geodata/         # Geospatial data for maps
+├── src/
+│   ├── config/
+│   │   └── constants.py # Color mappings, month names
+│   ├── data/
+│   │   ├── data_loader.py      # Downloads and loads data
+│   │   ├── dataframe_cleaner.py # Cleans raw data
+│   │   ├── dataframe_combiner.py # Combines datasets
+│   │   ├── loader.py          # Loads processed data
+│   │   └── preprocessing.py   # Filters data for visualization
+│   ├── visualization/
+│   │   ├── map.py       # Interactive map visualization
+│   │   ├── plotter.py   # Chart visualization functions
+│   │   └── widgets.py   # UI controls (dropdowns, etc.)
+│   ├── dashboard.ipynb  # Notebook to run the dashboard
+│   └── main.py          # Main application with data prep and dashboard
+└── requirements.txt     # Python package dependencies
 ```
 
-### **Configuration**
+## Code Structure Evolution
 
-- **`config/constants.py`**
-  - Contains constant values and configurations.
-  - Example contents:
-    - Mapping of month numbers to month names (`MONTH_MAPPING`).
-    - Color codes used in visualizations (`COLOR_MAPPING`).
+We started with notebook that had all code in one place, but it was not good for maintenance. Then we changed structure in steps:
 
----
+1. First, we separated data processing from visualization
+2. Then, we made separate chart and map components
+3. At last, we moved preparation code from notebook to `prepare_data()` function in main.py
 
-### **Data Handling**
+Current structure is better for maintenance. Now we can:
+- Run dashboard with existing data
+- Update data without changing visualization code
+- Add new features to charts or maps separately
 
-- **`data/loader.py`**
-  - Responsible for loading and preparing datasets.
-  - Typical function:
-    - `load_cleaned_data(filepath)`: Loads CSV data and sets correct data types.
+## Data Preparation
 
-- **`data/preprocessing.py`**
-  - Contains functions for filtering and processing the data.
-  - Typical function:
-    - `filter_dataframe(df, year, province, municipality)`: Filters data based on user selections from the widgets.
----
+We used following steps to prepare data:
 
-### **Visualization**
+### 1. Data Acquisition
+We download COVID data from RIVM (Dutch National Institute for Public Health):
+```python
+# Part of prepare_data() function in main.py
+url_cases_2 = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag.csv"
+url_cases_1 = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag_tm_03102021.csv"
+url_hosp_2 = "https://data.rivm.nl/covid-19/COVID-19_ziekenhuisopnames.csv"
+url_hosp_1 = "https://data.rivm.nl/data/covid-19/COVID-19_ziekenhuisopnames_tm_03102021.csv"
 
-- **`visualization/widgets.py`**
-  - Defines interactive widgets used in the dashboard.
-  - Examples:
-    - Dropdowns (Year, Province, Municipality selection)
-    - Checkboxes (Cases, Deaths, Hospital Admissions)
-    - Radio buttons (Aggregation options: Year, Months, Municipalities)
+download_data_from_url(url_cases_2, data_path / "cases_2.csv")
+download_data_from_url(url_cases_1, data_path / "cases_1.csv")
+# ... etc
+```
 
-- **`visualization/plotter.py`**
-  - Creates interactive plots using Plotly.
-  - Typical function:
-    - `generate_bar_chart(...)`: Generates bar charts based on filtered data, applying consistent colors and layout.
+### 2. Data Cleaning
+This was most difficult part. We had many problems:
+- Date formats were different between datasets
+- Municipality changed names and borders during pandemic
+- Many missing values and wrong codes
+- Hospital data had different structure than case data
 
----
+We had problems with municipality matching. For example, Haaren municipality was removed during pandemic and we needed special solution for this.
 
-### **Application Logic**
+### 3. Data Combination
+We combined these datasets:
+- Case data (infections and deaths)
+- Hospital admission data
+- Population data (for calculating rates per 100.000)
 
-- **`main.py`**
-  - Central Python script integrating all functionalities.
-  - Provides the main interactive dashboard logic through a callable function (`run_dashboard()`).
-  - Coordinates data loading, preprocessing, widget interactions, and visualizations.
+Big problem was to make correct joins between these different datasets.
 
----
+## Interactive Dashboard
 
-### **Interactive Dashboard Notebook**
+Dashboard has two tabs:
 
-- **`dashboard.ipynb`**
-  - Jupyter notebook serving as the user interface for running and interacting with the dashboard.
-  - Calls and orchestrates components from all previously mentioned files.
+### Chart Tab
+Shows interactive bar charts with options:
+- Select years (2020-2023 or All)
+- Choose metrics (Cases, Deaths, Hospital Admissions)
+- Filter by province and municipality
+- Change grouping (Year, Months, Municipalities)
 
----
+We had problem with month ordering. Default was alphabetical (April, August, etc.) but we need chronological order!
 
-This structured approach clearly organizes the project into logical sections, enhancing readability, maintainability, and extensibility.
-"""
+### Map Tab
+Shows map with colors to show COVID data:
+- Choose level: municipality, province or country
+- Change between monthly and yearly data
+- Show different metrics (total numbers or rates per 100.000)
 
-# Save this markdown content to a file
-markdown_file_path = '/mnt/data/project_structure.md'
-with open(markdown_file_path, 'w') as file:
-    file.write(markdown_content)
+Most difficult was to make color scale change correctly when user selects different metrics.
 
-markdown_file_path
+## Challenges and Solutions
 
+Main problems we had:
 
-## Data Sources
-The data was sourced from official Dutch repositories providing:
-- Covid-19 reported cases.
-- Hospital admission records.
-- Population data.
-- Municipality location data.
+1. **Data problems**:
+   Municipality changes were very difficult. We need to find which municipalities where merged or split.
 
-## Data Preparation Steps
+2. **Visualization problems**:
+   - Month order was wrong (alphabetical not chronological)
+   - Legend for years was not always in right position
+   - When showing many metrics, layout was confusing
+   - Too many municipalities make chart unreadable
 
-### 1. Data Acquisition (`data_loader.py`)
-- Downloaded raw COVID-19 case and hospital admission data (in CSV format) from public health sources.
-- Retrieved municipality boundary data from PDOK’s WFS endpoint and saved it as GeoJSON.
-- Loaded annual municipality population data from CBS, ensuring it aligns with administrative changes over time.
+3. **Code organization**:
+   We tried many different ways to organize code before we found good structure.
 
-### 2. Data Cleaning (`dataframe_cleaner.py`)
-- **Cases and Deaths**:
-  - Parsed and standardized dates, filled missing municipality codes, and renamed columns for clarity.
-  - Corrected outdated municipality codes due to mergers. For example, Brielle, Hellevoetsluis, and Westvoorne were merged into *Voorne aan Zee* (GM1992); codes and names were updated accordingly, and overlapping rows were aggregated.
-  - Dummy values (e.g., `9999` or `19998`) found in death statistics were replaced with 0 to prevent misleading results.
-  - Added `Year` and `Month` columns to support both monthly and yearly aggregations.
+## Key Learnings
 
-- **Hospital Admissions**:
-  - Standardized date formats and filtered out incomplete records.
-  - Aggregated data by municipality and date, and aligned municipality codes with the cases dataset.
-  - Added `Year` and `Month` columns for temporal analysis.
+1. **Pandas techniques**:
+   - pd.Categorical with ordering is important for correct sorting
+   - melt() function is needed for changing data shape for visualization
 
-- **Population Data**:
-  - Mapped population data to municipalities using standardized codes.
-  - Adjusted for municipality mergers using a mapping of outdated to current codes.
-  - Special handling was applied for *Haaren*, which was dissolved and split into four existing municipalities. Its population was evenly distributed among **Boxtel**, **Oisterwijk**, **Tilburg**, and **Vught**.
+2. **Visualization techniques**:
+   - Same colors for same metrics help user understand
+   - Vertical lines between groups make chart easier to read
+   - For municipalities, showing only important ones is better than showing all
 
-### 3. Data Combination (`dataframe_combiner.py`)
-- Combined cleaned cases and hospital datasets based on municipality and date.
-- Merged population data to allow calculation of incidence rates (cases, deaths, hospitalizations per 100,000 people).
-- Cleaned data was joined with geospatial boundaries to create GeoDataFrames at the municipality, province, and national levels.
-- These GeoDataFrames were pre-aggregated and saved in GeoJSON format for both monthly and yearly intervals to support fast, interactive visualization.
-
-
-### 4. Interactive Visualization Dashboard
-Developed using Python libraries:
-- **Pandas**: Data handling and analysis.
-- **Plotly Express**: Interactive bar charts.
-- **ipywidgets**: Interactive controls within Jupyter Notebook.
-
-Dashboard features:
-
-### Interactive Map Functionality
-
-We developed an interactive choropleth map using `folium` and `ipywidgets` that allows users to explore COVID-19 statistics across the Netherlands. The map visualizes the data on three geographical levels — **municipality**, **province**, and **national** — and supports both **monthly** and **yearly** aggregations.
-
-Users can select:
-- The **level of aggregation** (Municipality, Province, National),
-- The **time granularity** (Monthly or Yearly),
-- A **specific date** (automatically adapted to the chosen aggregation level),
-- And the **statistic to display**, including:
-  - Total reported cases,
-  - Deaths,
-  - Hospital admissions,
-  - And their incidence rates per 100,000 inhabitants.
-
-The color scale adapts dynamically based on the selected statistic, and each region provides an informative tooltip showing its name and the selected statistic’s value. The visualization is based on pre-aggregated GeoJSON files to ensure performance, and missing or invalid values are handled gracefully by displaying neutral colors and appropriate tooltips.
-
-This interactive tool enables a clear and intuitive exploration of temporal and regional trends in the pandemic's impact.
-
-
-## Challenges and Resolutions
+3. **Code structure**:
+   - Separating data code from visualization code is better
+   - Using consistent patterns makes maintenance easier
+   - Modular design helps when adding new features
 
 ## Conclusion
+
+This project taught us much about data problems and visualization in Python. We are satisfied with dashboard that shows COVID patterns in different regions and times.
+
+If we had more time, we would:
+- Add analysis of trends to show important changes
+- Make map more interactive
+- Add more information about population
+- Add feature to compare different regions
+
+Overall, assignment gave us good experience with pandas, visualization libraries and Python project structure.
