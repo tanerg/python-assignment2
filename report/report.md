@@ -134,6 +134,9 @@ Developed using Python libraries:
 - **Pandas**: Data handling and analysis.
 - **Plotly Express**: Interactive bar charts.
 - **ipywidgets**: Interactive controls within Jupyter Notebook.
+- **GeoPandas**: Geospatial data manipulation and integration with shapefiles and GeoJSON.
+- **Folium**: Interactive choropleth maps and geographical visualizations.
+- **Branca**: Custom color maps and legends for Folium.
 
 Dashboard features:
 
