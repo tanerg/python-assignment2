@@ -147,7 +147,7 @@ We developed an interactive choropleth map using `folium` and `ipywidgets` that 
 Users can select:
 - The level of aggregation (Municipality, Province, National),
 - The time granularity (Monthly or Yearly),
-- A specific date (automatically adapted to the chosen aggregation level),
+- A specific date,
 - And the statistic to display, including:
   - Total reported cases,
   - Deaths,
@@ -161,8 +161,6 @@ The visualization is based on pre-aggregated GeoJSON files to ensure performance
 
 One of the key challenges in this project was aligning and cleaning multiple datasets with differing structures and standards. For instance, the COVID-19 case and hospital admission datasets didn’t fully align in terms of municipality codes — particularly due to municipal mergers between 2020 and 2023. We resolved this by updating outdated municipality codes, aggregating their data into new entities, and applying manual corrections where necessary (e.g., evenly distributing Haaren’s population and case data across its successor municipalities).
 
-In addition, handling large geospatial datasets brought technical limitations. Some generated GeoJSON files exceeded GitHub’s file size limits, which led us to implement Git Large File Storage (LFS) for proper version control. This ensured that our large municipality-level datasets remained accessible and sharable without compromising repository integrity.
-
 From a functional standpoint, the core deliverable was an interactive bar chart dashboard, allowing users to explore trends in reported cases, hospital admissions, and deaths across municipalities and provinces, either monthly or yearly. A major challenge here was ensuring clean and consistent aggregation across different temporal and geographic levels.
 
 To improve the interpretability of these raw counts, we integrated population data for each municipality and year, allowing us to calculate incidence rates per 100,000 inhabitants. This step was crucial in making fair comparisons across municipalities and regions of differing sizes.
@@ -171,12 +169,10 @@ Building on that foundation, we decided to extend the dashboard with an interact
 
 ## Conclusion
 
-This project provided a hands-on opportunity to work with real-world datasets, integrating multiple data sources — cases, hospitalizations, deaths, population statistics, and geospatial boundaries — to build a coherent, interactive dashboard.
-
-Our implementation includes both a bar chart and an interactive map. These visualizations allow users to explore COVID-19 statistics at different geographic and temporal resolutions.
+This project provided a hands-on opportunity to work with real-world datasets, integrating multiple data sources to build a coherent, interactive dashboard.Our implementation includes both a bar chart and an interactive map. These visualizations allow users to explore COVID-19 statistics at different geographic and temporal resolutions.
 
 A key design choice was to include population data to compute incidence rates, which allowed us to move beyond raw counts and present normalized comparisons across regions. This added analytical depth and helped surface insights that would otherwise be obscured by population size differences.
 
-Working on this project required tackling several non-trivial challenges, such as handling municipality mergers, aligning disparate datasets, and cleaning up dummy values. We believe the result is robust and user-friendly, and we’re pleased with how the visualizations add interpretability to the raw numbers.
+Working on this project required tackling several challenges, such as handling municipality mergers, aligning disparate datasets, and cleaning up dummy values. We believe the result is robust and user-friendly, and we’re pleased with how the visualizations add interpretability to the raw numbers.
 
 If we had more time, we could have implemented other features like outlier detection and interpretation, aimed at identifying municipalities or time periods with unusually high or low statistics. These outliers might reflect real-world variation due to factors like vaccination rates, population density, or socio-economic status — and could serve as a starting point for deeper epidemiological insight. Another possible extension would be to make color scales on the maps consistent across time, improving visual comparability.
