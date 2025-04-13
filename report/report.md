@@ -120,7 +120,7 @@ The data was sourced from official Dutch repositories providing:
 - **Population Data**:
   - Mapped population data to municipalities using standardized codes.
   - Adjusted for municipality mergers using a mapping of outdated to current codes.
-  - Special handling was applied for *Haaren*, which was dissolved and split into four existing municipalities. Its population was evenly distributed among **Boxtel**, **Oisterwijk**, **Tilburg**, and **Vught**.
+  - Special handling was applied for *Haaren*, which was dissolved and split into four existing municipalities. Its population was evenly distributed among Boxtel, Oisterwijk, Tilburg, and Vught.
 
 ### 3. Data Combination (`dataframe_combiner.py`)
 - Combined cleaned cases and hospital datasets based on municipality and date.
@@ -142,13 +142,13 @@ Dashboard features:
 
 ### Interactive Map Functionality
 
-We developed an interactive choropleth map using `folium` and `ipywidgets` that allows users to explore COVID-19 statistics across the Netherlands. The map visualizes the data on three geographical levels — **municipality**, **province**, and **national** — and supports both **monthly** and **yearly** aggregations.
+We developed an interactive choropleth map using `folium` and `ipywidgets` that allows users to explore COVID-19 statistics across the Netherlands. The map visualizes the data on three geographical levels — municipality, province, and national — and supports both monthly and yearly aggregations.
 
 Users can select:
-- The **level of aggregation** (Municipality, Province, National),
-- The **time granularity** (Monthly or Yearly),
-- A **specific date** (automatically adapted to the chosen aggregation level),
-- And the **statistic to display**, including:
+- The level of aggregation (Municipality, Province, National),
+- The time granularity (Monthly or Yearly),
+- A specific date (automatically adapted to the chosen aggregation level),
+- And the statistic to display, including:
   - Total reported cases,
   - Deaths,
   - Hospital admissions,
@@ -163,20 +163,20 @@ One of the key challenges in this project was aligning and cleaning multiple dat
 
 In addition, handling large geospatial datasets brought technical limitations. Some generated GeoJSON files exceeded GitHub’s file size limits, which led us to implement Git Large File Storage (LFS) for proper version control. This ensured that our large municipality-level datasets remained accessible and sharable without compromising repository integrity.
 
-From a functional standpoint, the core deliverable was an **interactive bar chart dashboard**, allowing users to explore trends in reported cases, hospital admissions, and deaths across municipalities and provinces, either monthly or yearly. A major challenge here was ensuring clean and consistent aggregation across different temporal and geographic levels.
+From a functional standpoint, the core deliverable was an interactive bar chart dashboard, allowing users to explore trends in reported cases, hospital admissions, and deaths across municipalities and provinces, either monthly or yearly. A major challenge here was ensuring clean and consistent aggregation across different temporal and geographic levels.
 
-To improve the interpretability of these raw counts, we **integrated population data** for each municipality and year, allowing us to calculate **incidence rates per 100,000 inhabitants**. This step was crucial in making fair comparisons across municipalities and regions of differing sizes.
+To improve the interpretability of these raw counts, we integrated population data for each municipality and year, allowing us to calculate incidence rates per 100,000 inhabitants. This step was crucial in making fair comparisons across municipalities and regions of differing sizes.
 
-Building on that foundation, we decided to extend the dashboard with an **interactive choropleth map**. This visualization allows users to explore the same statistics spatially, offering additional insights that would be less obvious in bar charts. Making the map flexible and performant was non-trivial — we had to preprocess and aggregate data in advance to avoid laggy rendering, and fine-tune the styling and tooltips for clarity and responsiveness.
+Building on that foundation, we decided to extend the dashboard with an interactive choropleth map. This visualization allows users to explore the same statistics spatially, offering additional insights that would be less obvious in bar charts. Making the map flexible and performant was non-trivial — we had to preprocess and aggregate data in advance to avoid laggy rendering, and fine-tune the styling and tooltips for clarity and responsiveness.
 
 ## Conclusion
 
 This project provided a hands-on opportunity to work with real-world datasets, integrating multiple data sources — cases, hospitalizations, deaths, population statistics, and geospatial boundaries — to build a coherent, interactive dashboard.
 
-Our implementation includes both a **bar chart** and an **interactive map**. These visualizations allow users to explore COVID-19 statistics at different geographic and temporal resolutions.
+Our implementation includes both a bar chart and an interactive map. These visualizations allow users to explore COVID-19 statistics at different geographic and temporal resolutions.
 
-A key design choice was to **include population data** to compute incidence rates, which allowed us to move beyond raw counts and present normalized comparisons across regions. This added analytical depth and helped surface insights that would otherwise be obscured by population size differences.
+A key design choice was to include population data to compute incidence rates, which allowed us to move beyond raw counts and present normalized comparisons across regions. This added analytical depth and helped surface insights that would otherwise be obscured by population size differences.
 
 Working on this project required tackling several non-trivial challenges, such as handling municipality mergers, aligning disparate datasets, and cleaning up dummy values. We believe the result is robust and user-friendly, and we’re pleased with how the visualizations add interpretability to the raw numbers.
 
-If we had more time, we could have implemented other features like **outlier detection and interpretation**, aimed at identifying municipalities or time periods with unusually high or low statistics. These outliers might reflect real-world variation due to factors like vaccination rates, population density, or socio-economic status — and could serve as a starting point for deeper epidemiological insight. Another possible extension would be to make color scales on the maps consistent across time, improving visual comparability.
+If we had more time, we could have implemented other features like outlier detection and interpretation, aimed at identifying municipalities or time periods with unusually high or low statistics. These outliers might reflect real-world variation due to factors like vaccination rates, population density, or socio-economic status — and could serve as a starting point for deeper epidemiological insight. Another possible extension would be to make color scales on the maps consistent across time, improving visual comparability.
