@@ -1,206 +1,103 @@
+import os
+import sys
+import warnings
+
 import pandas as pd
 from IPython.display import display
 import ipywidgets as widgets
-import plotly.express as px
-from plotly.subplots import make_subplots
-import warnings
-import sys
+
+from visualization.plotter import create_interactive_covid_chart
+from visualization.map import create_interactive_covid_map
+from data.data_loader import download_data_from_url, load_and_concatenate_csv, load_population_data, load_municipality_geodata
+from data.dataframe_cleaner import clean_cases_df, clean_hospital_df, clean_population_df
+from data.dataframe_combiner import combine_cases_and_hospital_data, add_population_and_calculate_incidence
 
 # Silence the FutureWarning related to observed parameter in groupby
 warnings.filterwarnings('ignore', category=FutureWarning,
                        message='The default of observed=False is deprecated')
 
-from data.loader import load_cleaned_data
-from data.preprocessing import filter_by_criteria
-from visualization.widgets import (
-    create_year_dropdown, create_province_dropdown,
-    create_municipality_dropdown, create_metric_checkboxes,
-    create_aggregation_radio
-)
-from visualization.plotter import generate_bar_chart, generate_monthly_chart, generate_municipality_chart
-from config.constants import MONTH_MAPPING
+def prepare_data(data_dir='../data'):
+    """
+    Prepare COVID-19 data by downloading, cleaning, and combining datasets.
 
-def run_dashboard(data_path='../data/data_cleaned.csv'):
-    df_merged = load_cleaned_data(data_path)
+    This function:
+    1. Downloads COVID data from RIVM sources
+    2. Loads and concatenates multiple datasets
+    3. Cleans the data
+    4. Combines cases, hospital, and population data
+    5. Saves the cleaned data to a CSV file
 
-    year_dropdown = create_year_dropdown(df_merged)
-    province_dropdown = create_province_dropdown(df_merged)
-    municipality_dropdown = create_municipality_dropdown()
-    cases_checkbox, deaths_checkbox, hospital_checkbox = create_metric_checkboxes()
-    aggregation_radio = create_aggregation_radio()
+    """
+    # URLs for the COVID data
+    url_cases_2 = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag.csv"
+    url_cases_1 = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag_tm_03102021.csv"
+    url_hosp_2 = "https://data.rivm.nl/covid-19/COVID-19_ziekenhuisopnames.csv"
+    url_hosp_1 = "https://data.rivm.nl/data/covid-19/COVID-19_ziekenhuisopnames_tm_03102021.csv"
 
-    controls = widgets.VBox([
-        year_dropdown,
-        widgets.HBox([cases_checkbox, deaths_checkbox, hospital_checkbox]),
-        province_dropdown,
-        municipality_dropdown,
-        aggregation_radio
-    ])
+    # Download data from URLs
+    print("Downloading COVID-19 data...")
+    download_data_from_url(url_cases_2, os.path.join(data_dir, "cases_2.csv"))
+    download_data_from_url(url_cases_1, os.path.join(data_dir, "cases_1.csv"))
+    download_data_from_url(url_hosp_2, os.path.join(data_dir, "hosp_2.csv"))
+    download_data_from_url(url_hosp_1, os.path.join(data_dir, "hosp_1.csv"))
 
-    output = widgets.Output()
-    map_output = widgets.Output()
+    # Load the case data
+    print("Loading and processing data...")
+    file_cases_1 = os.path.join(data_dir, "cases_1.csv")
+    file_cases_2 = os.path.join(data_dir, "cases_2.csv")
+    df_cases = load_and_concatenate_csv(file_cases_1, file_cases_2)
 
-    # Create tab widget with Chart and Map tabs
+    # Load the hospital data
+    file_hospital_1 = os.path.join(data_dir, "hosp_1.csv")
+    file_hospital_2 = os.path.join(data_dir, "hosp_2.csv")
+    df_hospital = load_and_concatenate_csv(file_hospital_1, file_hospital_2)
+
+    # Load population data
+    file_population = os.path.join(data_dir, "population_data.csv")
+    df_population = load_population_data(file_population)
+
+    # Load municipality geodata
+    municipalities_gdf = load_municipality_geodata(os.path.join(data_dir, "municipalities_2023.geojson"))
+
+    # Clean the dataframes
+    print("Cleaning datasets...")
+    df_cases_cleaned = clean_cases_df(df_cases)
+    df_hospital_cleaned = clean_hospital_df(df_hospital)
+    df_population_cleaned = clean_population_df(df_population)
+
+    # Combine the data
+    print("Combining datasets...")
+    df_covid = combine_cases_and_hospital_data(df_cases_cleaned, df_hospital_cleaned)
+    df = add_population_and_calculate_incidence(df_covid, df_population_cleaned)
+
+    # Save the cleaned data
+    output_file = os.path.join(data_dir, 'data_cleaned.csv')
+    print(f"Saving cleaned data to {output_file}")
+    df.to_csv(output_file, index=False)
+
+    print("Data preparation complete!")
+    return df
+
+def run_dashboard(data_dir='../data'):
+    # Define file paths
+    cleaned_data_file = os.path.join(data_dir, 'data_cleaned.csv')
+    geodata_path = os.path.join(data_dir, 'geodata')
+
+    # Create tabs for the dashboard
     tab = widgets.Tab()
-    chart_tab = widgets.VBox([controls, output])
-    map_tab = widgets.VBox([map_output])
 
-    tab.children = [chart_tab, map_tab]
+    # Create chart and map content by calling the respective functions
+    chart_tab_content = create_interactive_covid_chart(cleaned_data_file)
+    map_tab_content = create_interactive_covid_map(geodata_path)
+
+    # Set up the tabs with their content
+    tab.children = [chart_tab_content, map_tab_content]
     tab.set_title(0, 'Chart')
     tab.set_title(1, 'Map')
 
-    def update_municipality_options(*args):
-        selected_province = province_dropdown.value
-        if selected_province not in ['Netherlands', 'All Provinces']:
-            municipalities = ['All'] + sorted(df_merged[df_merged['Province'] == selected_province]['Municipality_name'].unique())
-            municipality_dropdown.options = municipalities
-            municipality_dropdown.disabled = False
-        else:
-            municipality_dropdown.options = ['All']
-            municipality_dropdown.value = 'All'
-            municipality_dropdown.disabled = True
-
-    def update_aggregation_options(*args):
-        if province_dropdown.value == 'Netherlands':
-            # Only Year and Months available for Netherlands
-            aggregation_radio.options = ['Year', 'Months']
-        elif municipality_dropdown.disabled or municipality_dropdown.value == 'All':
-            # All options for province level
-            aggregation_radio.options = ['Year', 'Months', 'Municipalities']
-        else:
-            # Year and Months for specific municipalities
-            aggregation_radio.options = ['Year', 'Months']
-            if aggregation_radio.value == 'Municipalities':
-                aggregation_radio.value = 'Year'
-
-    def update_plot(*args):
-        with output:
-            output.clear_output(wait=True)
-
-            df_filtered = filter_by_criteria(
-                df_merged,
-                year=year_dropdown.value,
-                province=province_dropdown.value if province_dropdown.value not in ['Netherlands', 'All Provinces'] else 'All',
-                municipality=municipality_dropdown.value if not municipality_dropdown.disabled else 'All'
-            )
-
-            x_axis, title_suffix = None, ""
-            selected_province = province_dropdown.value
-            selected_year = year_dropdown.value
-
-            # Determine x-axis based on current selections
-            if selected_province == 'Netherlands':
-                x_axis = 'Month' if aggregation_radio.value == 'Months' else 'Year'
-            elif selected_province == 'All Provinces':
-                if aggregation_radio.value == 'Municipalities':
-                    x_axis = 'Municipality_name'
-                elif aggregation_radio.value == 'Months':
-                    x_axis = 'Month'
-                else:
-                    x_axis = 'Province'
-            else:
-                x_axis = 'Municipality_name' if aggregation_radio.value == 'Municipalities' else 'Month' if aggregation_radio.value == 'Months' else 'Year'
-
-            title_suffix = aggregation_radio.value
-
-            # Convert numeric months to names for better display
-            if x_axis == 'Month':
-                month_order = list(MONTH_MAPPING.values())
-                df_filtered = df_filtered.copy()
-                df_filtered['Month'] = df_filtered['Month'].map(MONTH_MAPPING).astype(
-                    pd.CategoricalDtype(categories=month_order, ordered=True)
-                )
-
-            # Reset index to prevent alignment issues during groupby
-            df_filtered = df_filtered.reset_index(drop=True)
-
-            # Collect selected metrics from checkboxes
-            metrics = []
-            if cases_checkbox.value:
-                metrics.append('Total_reported')
-            if deaths_checkbox.value:
-                metrics.append('Deceased')
-            if hospital_checkbox.value:
-                metrics.append('Hospital_admission')
-
-            if not metrics:
-                return
-
-            # Build chart title from current selections
-            title_parts = ['Covid-19 Overview']
-
-            if selected_province == 'All Provinces' and aggregation_radio.value == 'Months':
-                title_parts.append('All Provinces - Aggregated')
-            elif selected_province == 'Netherlands':
-                title_parts.append('Netherlands')
-            else:
-                title_parts.append(selected_province)
-
-            if not municipality_dropdown.disabled and municipality_dropdown.value != 'All':
-                title_parts.append(municipality_dropdown.value)
-
-            title_parts.append(title_suffix)
-            title_parts.append(str(selected_year))
-            title = ' - '.join(title_parts)
-
-            # Generate the appropriate visualization based on current selections
-            if selected_year == 'All' and (selected_province == 'Netherlands' or selected_province == 'All Provinces') and aggregation_radio.value == 'Year':
-                # Year aggregation - show years on x-axis
-                df_grouped = df_filtered.groupby('Year', as_index=False, observed=True).agg({
-                    'Total_reported': 'sum',
-                    'Deceased': 'sum',
-                    'Hospital_admission': 'sum'
-                })
-                fig = generate_bar_chart(df_grouped, 'Year', metrics, title)
-
-            elif selected_year == 'All' and aggregation_radio.value == 'Months':
-                # Month aggregation - special handling with years stacked within metrics
-                if selected_province == 'All Provinces':
-                    df_filtered = df_filtered.groupby(['Month', 'Year'], observed=True).agg({
-                        'Total_reported': 'sum',
-                        'Deceased': 'sum',
-                        'Hospital_admission': 'sum'
-                    }).reset_index()
-
-                fig = generate_monthly_chart(df_filtered, metrics, title, MONTH_MAPPING)
-
-            elif selected_year == 'All' and aggregation_radio.value == 'Municipalities':
-                # Municipality aggregation - special handling for multiple municipalities
-                if selected_province not in ['Netherlands', 'All Provinces']:
-                    # Data has already been filtered by province in filter_by_criteria
-                    pass
-
-                fig = generate_municipality_chart(df_filtered, metrics, title)
-
-            else:
-                # Standard bar chart for other cases
-                df_grouped = df_filtered.groupby(x_axis, as_index=False, observed=True).agg({
-                    'Total_reported': 'sum',
-                    'Deceased': 'sum',
-                    'Hospital_admission': 'sum'
-                })
-
-                fig = generate_bar_chart(df_grouped, x_axis, metrics, title)
-
-            fig.show()
-
-    # Set up widget observers
-    year_dropdown.observe(update_plot, 'value')
-    province_dropdown.observe(update_plot, 'value')
-    municipality_dropdown.observe(update_plot, 'value')
-    aggregation_radio.observe(update_plot, 'value')
-
-    cases_checkbox.observe(update_plot, 'value')
-    deaths_checkbox.observe(update_plot, 'value')
-    hospital_checkbox.observe(update_plot, 'value')
-
-    province_dropdown.observe(update_municipality_options, 'value')
-    province_dropdown.observe(update_aggregation_options, 'value')
-    municipality_dropdown.observe(update_aggregation_options, 'value')
-
-    # Initialize the UI
-    update_municipality_options()
-    update_aggregation_options()
-    update_plot()
-
+    # Display the dashboard
     display(tab)
+
+if __name__ == "__main__":
+    # If run as a script, execute the dashboard
+    run_dashboard()
