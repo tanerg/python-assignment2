@@ -125,10 +125,10 @@ Main problems we had:
    - pd.Categorical with ordering is important for correct sorting
    - melt() function is needed for changing data shape for visualization
 
-2. **Visualization techniques**:
-   - Same colors for same metrics help user understand
-   - Vertical lines between groups make chart easier to read
-   - For municipalities, showing only important ones is better than showing all
+- **Population Data**:
+  - Mapped population data to municipalities using standardized codes.
+  - Adjusted for municipality mergers using a mapping of outdated to current codes.
+  - Special handling was applied for *Haaren*, which was dissolved and split into four existing municipalities. Its population was evenly distributed among Boxtel, Oisterwijk, Tilburg, and Vught.
 
 3. **Code structure**:
    - Separating data code from visualization code is better
@@ -137,7 +137,14 @@ Main problems we had:
 
 ## Conclusion
 
-This project taught us much about data problems and visualization in Python. We are satisfied with dashboard that shows COVID patterns in different regions and times.
+### 4. Interactive Visualization Dashboard
+Developed using Python libraries:
+- **Pandas**: Data handling and analysis.
+- **Plotly Express**: Interactive bar charts.
+- **ipywidgets**: Interactive controls within Jupyter Notebook.
+- **GeoPandas**: Geospatial data manipulation and integration with shapefiles and GeoJSON.
+- **Folium**: Interactive choropleth maps and geographical visualizations.
+- **Branca**: Custom color maps and legends for Folium.
 
 If we had more time, we would:
 - Add analysis of trends to show important changes
@@ -146,3 +153,38 @@ If we had more time, we would:
 - Add feature to compare different regions
 
 Overall, assignment gave us good experience with pandas, visualization libraries and Python project structure.
+
+We developed an interactive choropleth map using `folium` and `ipywidgets` that allows users to explore COVID-19 statistics across the Netherlands. The map visualizes the data on three geographical levels — municipality, province, and national — and supports both monthly and yearly aggregations.
+
+Users can select:
+- The level of aggregation (Municipality, Province, National),
+- The time granularity (Monthly or Yearly),
+- A specific date,
+- And the statistic to display, including:
+  - Total reported cases,
+  - Deaths,
+  - Hospital admissions,
+  - And their incidence rates per 100,000 inhabitants.
+
+The visualization is based on pre-aggregated GeoJSON files to ensure performance. This interactive tool enables a clear and intuitive exploration of temporal and regional trends in the pandemic's impact.
+
+
+## Challenges and Resolutions
+
+One of the key challenges in this project was aligning and cleaning multiple datasets with differing structures and standards. For instance, the COVID-19 case and hospital admission datasets didn’t fully align in terms of municipality codes — particularly due to municipal mergers between 2020 and 2023. We resolved this by updating outdated municipality codes, aggregating their data into new entities, and applying manual corrections where necessary (e.g., evenly distributing Haaren’s population and case data across its successor municipalities).
+
+From a functional standpoint, the core deliverable was an interactive bar chart dashboard, allowing users to explore trends in reported cases, hospital admissions, and deaths across municipalities and provinces, either monthly or yearly. A major challenge here was ensuring clean and consistent aggregation across different temporal and geographic levels.
+
+To improve the interpretability of these raw counts, we integrated population data for each municipality and year, allowing us to calculate incidence rates per 100,000 inhabitants. This step was crucial in making fair comparisons across municipalities and regions of differing sizes.
+
+Building on that foundation, we decided to extend the dashboard with an interactive choropleth map. This visualization allows users to explore the same statistics spatially, offering additional insights that would be less obvious in bar charts. Making the map flexible and performant was non-trivial — we had to preprocess and aggregate data in advance to avoid laggy rendering, and fine-tune the styling and tooltips for clarity and responsiveness.
+
+## Conclusion
+
+This project provided a hands-on opportunity to work with real-world datasets, integrating multiple data sources to build a coherent, interactive dashboard.Our implementation includes both a bar chart and an interactive map. These visualizations allow users to explore COVID-19 statistics at different geographic and temporal resolutions.
+
+A key design choice was to include population data to compute incidence rates, which allowed us to move beyond raw counts and present normalized comparisons across regions. This added analytical depth and helped surface insights that would otherwise be obscured by population size differences.
+
+Working on this project required tackling several challenges, such as handling municipality mergers, aligning disparate datasets, and cleaning up dummy values. We believe the result is robust and user-friendly, and we’re pleased with how the visualizations add interpretability to the raw numbers.
+
+If we had more time, we could have implemented other features like outlier detection and interpretation, aimed at identifying municipalities or time periods with unusually high or low statistics. These outliers might reflect real-world variation due to factors like vaccination rates, population density, or socio-economic status — and could serve as a starting point for deeper epidemiological insight. Another possible extension would be to make color scales on the maps consistent across time, improving visual comparability.
