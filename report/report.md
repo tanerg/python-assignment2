@@ -47,40 +47,43 @@ Current structure is better for maintenance. Now we can:
 - Update data without changing visualization code
 - Add new features to charts or maps separately
 
-## Data Preparation
+## Data Sources
+The data was sourced from official Dutch repositories providing:
+- Covid-19 reported cases.
+- Hospital admission records.
+- Population data.
+- Municipality location data.
 
-We used following steps to prepare data:
+## Data Preparation Steps
 
-### 1. Data Acquisition
-We download COVID data from RIVM (Dutch National Institute for Public Health):
-```python
-# Part of prepare_data() function in main.py
-url_cases_2 = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag.csv"
-url_cases_1 = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag_tm_03102021.csv"
-url_hosp_2 = "https://data.rivm.nl/covid-19/COVID-19_ziekenhuisopnames.csv"
-url_hosp_1 = "https://data.rivm.nl/data/covid-19/COVID-19_ziekenhuisopnames_tm_03102021.csv"
+### 1. Data Acquisition (`data_loader.py`)
+- Downloaded raw COVID-19 case and hospital admission data (in CSV format) from public health sources.
+- Retrieved municipality boundary data from PDOK’s WFS endpoint and saved it as GeoJSON.
+- Loaded annual municipality population data from CBS, ensuring it aligns with administrative changes over time.
 
-download_data_from_url(url_cases_2, data_path / "cases_2.csv")
-download_data_from_url(url_cases_1, data_path / "cases_1.csv")
-# ... etc
-```
+### 2. Data Cleaning (`dataframe_cleaner.py`)
+- **Cases and Deaths**:
+  - Parsed and standardized dates, filled missing municipality codes, and renamed columns for clarity.
+  - Corrected outdated municipality codes due to mergers. For example, Brielle, Hellevoetsluis, and Westvoorne were merged into *Voorne aan Zee* (GM1992); codes and names were updated accordingly, and overlapping rows were aggregated.
+  - Dummy values (e.g., `9999` or `19998`) found in death statistics were replaced with 0 to prevent misleading results.
+  - Added `Year` and `Month` columns to support both monthly and yearly aggregations.
 
-### 2. Data Cleaning
-This was most difficult part. We had many problems:
-- Date formats were different between datasets
-- Municipality changed names and borders during pandemic
-- Many missing values and wrong codes
-- Hospital data had different structure than case data
+- **Hospital Admissions**:
+  - Standardized date formats and filtered out incomplete records.
+  - Aggregated data by municipality and date, and aligned municipality codes with the cases dataset.
+  - Added `Year` and `Month` columns for temporal analysis.
 
-We had problems with municipality matching. For example, Haaren municipality was removed during pandemic and we needed special solution for this.
+- **Population Data**:
+  - Mapped population data to municipalities using standardized codes.
+  - Adjusted for municipality mergers using a mapping of outdated to current codes.
+  - Special handling was applied for *Haaren*, which was dissolved and split into four existing municipalities. Its population was evenly distributed among Boxtel, Oisterwijk, Tilburg, and Vught.
 
-### 3. Data Combination
-We combined these datasets:
-- Case data (infections and deaths)
-- Hospital admission data
-- Population data (for calculating rates per 100.000)
+### 3. Data Combination (`dataframe_combiner.py`)
+- Combined cleaned cases and hospital datasets based on municipality and date.
+- Merged population data to allow calculation of incidence rates (cases, deaths, hospitalizations per 100,000 people).
+- Cleaned data was joined with geospatial boundaries to create GeoDataFrames at the municipality, province, and national levels.
+- These GeoDataFrames were pre-aggregated and saved in GeoJSON format for both monthly and yearly intervals to support fast, interactive visualization.
 
-Big problem was to make correct joins between these different datasets.
 
 ### 4. Interactive Visualization Dashboard
 Developed using Python libraries:
@@ -91,6 +94,16 @@ Developed using Python libraries:
 - **Folium**: Interactive choropleth maps and geographical visualizations.
 - **Branca**: Custom color maps and legends for Folium.
 
+Dashboard features:
+
+### Interactive Chart Functionality
+Shows interactive bar charts with options:
+- Select years (2020-2023 or All)
+- Choose metrics (Cases, Deaths, Hospital Admissions)
+- Filter by province and municipality
+- Change grouping (Year, Months, Municipalities)
+
+### Interactive Map Functionality
 We developed an interactive choropleth map using `folium` and `ipywidgets` that allows users to explore COVID-19 statistics across the Netherlands. The map visualizes the data on three geographical levels — municipality, province, and national — and supports both monthly and yearly aggregations.
 
 Users can select:
@@ -103,23 +116,7 @@ Users can select:
   - Hospital admissions,
   - And their incidence rates per 100,000 inhabitants.
 
-Dashboard has two tabs:
-
-### Chart Tab
-Shows interactive bar charts with options:
-- Select years (2020-2023 or All)
-- Choose metrics (Cases, Deaths, Hospital Admissions)
-- Filter by province and municipality
-- Change grouping (Year, Months, Municipalities)
-
-### Map Tab
-Shows map with colors to show COVID data:
-- Choose level: municipality, province or country
-- Change between monthly and yearly data
-- Show different metrics (total numbers or rates per 100.000)
-
 The visualization is based on pre-aggregated GeoJSON files to ensure performance. This interactive tool enables a clear and intuitive exploration of temporal and regional trends in the pandemic's impact.
-
 
 ## Challenges and Resolutions
 One of the key challenges in this project was aligning and cleaning multiple datasets with differing structures and standards. For instance, the COVID-19 case and hospital admission datasets didn’t fully align in terms of municipality codes — particularly due to municipal mergers between 2020 and 2023. We resolved this by updating outdated municipality codes, aggregating their data into new entities, and applying manual corrections where necessary (e.g., evenly distributing Haaren’s population and case data across its successor municipalities).
