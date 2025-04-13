@@ -1,6 +1,7 @@
 import os
 import sys
 import warnings
+from pathlib import Path
 
 import pandas as pd
 from IPython.display import display
@@ -28,6 +29,9 @@ def prepare_data(data_dir='../data'):
     5. Saves the cleaned data to a CSV file
 
     """
+    # Convert string path to Path object
+    data_path = Path(data_dir)
+
     # URLs for the COVID data
     url_cases_2 = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag.csv"
     url_cases_1 = "https://data.rivm.nl/covid-19/COVID-19_aantallen_gemeente_per_dag_tm_03102021.csv"
@@ -36,28 +40,28 @@ def prepare_data(data_dir='../data'):
 
     # Download data from URLs
     print("Downloading COVID-19 data...")
-    download_data_from_url(url_cases_2, os.path.join(data_dir, "cases_2.csv"))
-    download_data_from_url(url_cases_1, os.path.join(data_dir, "cases_1.csv"))
-    download_data_from_url(url_hosp_2, os.path.join(data_dir, "hosp_2.csv"))
-    download_data_from_url(url_hosp_1, os.path.join(data_dir, "hosp_1.csv"))
+    download_data_from_url(url_cases_2, data_path / "cases_2.csv")
+    download_data_from_url(url_cases_1, data_path / "cases_1.csv")
+    download_data_from_url(url_hosp_2, data_path / "hosp_2.csv")
+    download_data_from_url(url_hosp_1, data_path / "hosp_1.csv")
 
     # Load the case data
     print("Loading and processing data...")
-    file_cases_1 = os.path.join(data_dir, "cases_1.csv")
-    file_cases_2 = os.path.join(data_dir, "cases_2.csv")
+    file_cases_1 = data_path / "cases_1.csv"
+    file_cases_2 = data_path / "cases_2.csv"
     df_cases = load_and_concatenate_csv(file_cases_1, file_cases_2)
 
     # Load the hospital data
-    file_hospital_1 = os.path.join(data_dir, "hosp_1.csv")
-    file_hospital_2 = os.path.join(data_dir, "hosp_2.csv")
+    file_hospital_1 = data_path / "hosp_1.csv"
+    file_hospital_2 = data_path / "hosp_2.csv"
     df_hospital = load_and_concatenate_csv(file_hospital_1, file_hospital_2)
 
     # Load population data
-    file_population = os.path.join(data_dir, "population_data.csv")
+    file_population = data_path / "population_data.csv"
     df_population = load_population_data(file_population)
 
     # Load municipality geodata
-    municipalities_gdf = load_municipality_geodata(os.path.join(data_dir, "municipalities_2023.geojson"))
+    municipalities_gdf = load_municipality_geodata(data_path / "municipalities_2023.geojson")
 
     # Clean the dataframes
     print("Cleaning datasets...")
@@ -71,7 +75,7 @@ def prepare_data(data_dir='../data'):
     df = add_population_and_calculate_incidence(df_covid, df_population_cleaned)
 
     # Save the cleaned data
-    output_file = os.path.join(data_dir, 'data_cleaned.csv')
+    output_file = data_path / 'data_cleaned.csv'
     print(f"Saving cleaned data to {output_file}")
     df.to_csv(output_file, index=False)
 
