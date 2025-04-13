@@ -45,7 +45,6 @@ src/
   - Contains functions for filtering and processing the data.
   - Typical function:
     - `filter_dataframe(df, year, province, municipality)`: Filters data based on user selections from the widgets.
-
 ---
 
 ### **Visualization**
@@ -102,26 +101,33 @@ The data was sourced from official Dutch repositories providing:
 ## Data Preparation Steps
 
 ### 1. Data Acquisition (`data_loader.py`)
-- Used functions to automatically download raw CSV datasets from public health websites.
-- Loaded datasets directly into pandas DataFrames for further processing.
-- Collected municipality location data in GeoJSON format from public services.
+- Downloaded raw COVID-19 case and hospital admission data (in CSV format) from public health sources.
+- Retrieved municipality boundary data from PDOK’s WFS endpoint and saved it as GeoJSON.
+- Loaded annual municipality population data from CBS, ensuring it aligns with administrative changes over time.
 
 ### 2. Data Cleaning (`dataframe_cleaner.py`)
-- **Cases data**:
-  - Converted dates, filled missing municipality codes, and renamed columns to make them clearer.
-  - Handled merged municipalities (e.g., Brielle, Hellevoetsluis, Westvoorne into Voorne aan Zee).
-  - Combined data by date and municipality and added 'Year' and 'Month' columns for easier grouping.
-- **Hospital data**:
-  - Standardized date fields and removed incomplete records.
-  - Summarized hospital admissions by municipality and date.
-  - Added 'Year' and 'Month' columns for easier time-based grouping.
-- **Population data**:
-  - Gathered municipality-level statistics, handled outdated municipality codes, and adjusted populations for merged municipalities.
-  - Created a clean dataset suitable for calculating incidence rates.
+- **Cases and Deaths**:
+  - Parsed and standardized dates, filled missing municipality codes, and renamed columns for clarity.
+  - Corrected outdated municipality codes due to mergers. For example, Brielle, Hellevoetsluis, and Westvoorne were merged into *Voorne aan Zee* (GM1992); codes and names were updated accordingly, and overlapping rows were aggregated.
+  - Dummy values (e.g., `9999` or `19998`) found in death statistics were replaced with 0 to prevent misleading results.
+  - Added `Year` and `Month` columns to support both monthly and yearly aggregations.
+
+- **Hospital Admissions**:
+  - Standardized date formats and filtered out incomplete records.
+  - Aggregated data by municipality and date, and aligned municipality codes with the cases dataset.
+  - Added `Year` and `Month` columns for temporal analysis.
+
+- **Population Data**:
+  - Mapped population data to municipalities using standardized codes.
+  - Adjusted for municipality mergers using a mapping of outdated to current codes.
+  - Special handling was applied for *Haaren*, which was dissolved and split into four existing municipalities. Its population was evenly distributed among **Boxtel**, **Oisterwijk**, **Tilburg**, and **Vught**.
 
 ### 3. Data Combination (`dataframe_combiner.py`)
-- Merged cleaned cases and hospital admission datasets using date and municipality codes.
-- Included population data to calculate incidence rates for cases, deaths, and hospital admissions per 100,000 residents.
+- Combined cleaned cases and hospital datasets based on municipality and date.
+- Merged population data to allow calculation of incidence rates (cases, deaths, hospitalizations per 100,000 people).
+- Cleaned data was joined with geospatial boundaries to create GeoDataFrames at the municipality, province, and national levels.
+- These GeoDataFrames were pre-aggregated and saved in GeoJSON format for both monthly and yearly intervals to support fast, interactive visualization.
+
 
 ### 4. Interactive Visualization Dashboard
 Developed using Python libraries:
@@ -130,6 +136,25 @@ Developed using Python libraries:
 - **ipywidgets**: Interactive controls within Jupyter Notebook.
 
 Dashboard features:
+
+### Interactive Map Functionality
+
+We developed an interactive choropleth map using `folium` and `ipywidgets` that allows users to explore COVID-19 statistics across the Netherlands. The map visualizes the data on three geographical levels — **municipality**, **province**, and **national** — and supports both **monthly** and **yearly** aggregations.
+
+Users can select:
+- The **level of aggregation** (Municipality, Province, National),
+- The **time granularity** (Monthly or Yearly),
+- A **specific date** (automatically adapted to the chosen aggregation level),
+- And the **statistic to display**, including:
+  - Total reported cases,
+  - Deaths,
+  - Hospital admissions,
+  - And their incidence rates per 100,000 inhabitants.
+
+The color scale adapts dynamically based on the selected statistic, and each region provides an informative tooltip showing its name and the selected statistic’s value. The visualization is based on pre-aggregated GeoJSON files to ensure performance, and missing or invalid values are handled gracefully by displaying neutral colors and appropriate tooltips.
+
+This interactive tool enables a clear and intuitive exploration of temporal and regional trends in the pandemic's impact.
+
 
 ## Challenges and Resolutions
 
