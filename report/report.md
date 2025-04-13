@@ -82,61 +82,6 @@ We combined these datasets:
 
 Big problem was to make correct joins between these different datasets.
 
-## Interactive Dashboard
-
-Dashboard has two tabs:
-
-### Chart Tab
-Shows interactive bar charts with options:
-- Select years (2020-2023 or All)
-- Choose metrics (Cases, Deaths, Hospital Admissions)
-- Filter by province and municipality
-- Change grouping (Year, Months, Municipalities)
-
-We had problem with month ordering. Default was alphabetical (April, August, etc.) but we need chronological order!
-
-### Map Tab
-Shows map with colors to show COVID data:
-- Choose level: municipality, province or country
-- Change between monthly and yearly data
-- Show different metrics (total numbers or rates per 100.000)
-
-Most difficult was to make color scale change correctly when user selects different metrics.
-
-## Challenges and Solutions
-
-Main problems we had:
-
-1. **Data problems**:
-   Municipality changes were very difficult. We need to find which municipalities where merged or split.
-
-2. **Visualization problems**:
-   - Month order was wrong (alphabetical not chronological)
-   - Legend for years was not always in right position
-   - When showing many metrics, layout was confusing
-   - Too many municipalities make chart unreadable
-
-3. **Code organization**:
-   We tried many different ways to organize code before we found good structure.
-
-## Key Learnings
-
-1. **Pandas techniques**:
-   - pd.Categorical with ordering is important for correct sorting
-   - melt() function is needed for changing data shape for visualization
-
-- **Population Data**:
-  - Mapped population data to municipalities using standardized codes.
-  - Adjusted for municipality mergers using a mapping of outdated to current codes.
-  - Special handling was applied for *Haaren*, which was dissolved and split into four existing municipalities. Its population was evenly distributed among Boxtel, Oisterwijk, Tilburg, and Vught.
-
-3. **Code structure**:
-   - Separating data code from visualization code is better
-   - Using consistent patterns makes maintenance easier
-   - Modular design helps when adding new features
-
-## Conclusion
-
 ### 4. Interactive Visualization Dashboard
 Developed using Python libraries:
 - **Pandas**: Data handling and analysis.
@@ -145,14 +90,6 @@ Developed using Python libraries:
 - **GeoPandas**: Geospatial data manipulation and integration with shapefiles and GeoJSON.
 - **Folium**: Interactive choropleth maps and geographical visualizations.
 - **Branca**: Custom color maps and legends for Folium.
-
-If we had more time, we would:
-- Add analysis of trends to show important changes
-- Make map more interactive
-- Add more information about population
-- Add feature to compare different regions
-
-Overall, assignment gave us good experience with pandas, visualization libraries and Python project structure.
 
 We developed an interactive choropleth map using `folium` and `ipywidgets` that allows users to explore COVID-19 statistics across the Netherlands. The map visualizes the data on three geographical levels — municipality, province, and national — and supports both monthly and yearly aggregations.
 
@@ -166,11 +103,25 @@ Users can select:
   - Hospital admissions,
   - And their incidence rates per 100,000 inhabitants.
 
+Dashboard has two tabs:
+
+### Chart Tab
+Shows interactive bar charts with options:
+- Select years (2020-2023 or All)
+- Choose metrics (Cases, Deaths, Hospital Admissions)
+- Filter by province and municipality
+- Change grouping (Year, Months, Municipalities)
+
+### Map Tab
+Shows map with colors to show COVID data:
+- Choose level: municipality, province or country
+- Change between monthly and yearly data
+- Show different metrics (total numbers or rates per 100.000)
+
 The visualization is based on pre-aggregated GeoJSON files to ensure performance. This interactive tool enables a clear and intuitive exploration of temporal and regional trends in the pandemic's impact.
 
 
 ## Challenges and Resolutions
-
 One of the key challenges in this project was aligning and cleaning multiple datasets with differing structures and standards. For instance, the COVID-19 case and hospital admission datasets didn’t fully align in terms of municipality codes — particularly due to municipal mergers between 2020 and 2023. We resolved this by updating outdated municipality codes, aggregating their data into new entities, and applying manual corrections where necessary (e.g., evenly distributing Haaren’s population and case data across its successor municipalities).
 
 From a functional standpoint, the core deliverable was an interactive bar chart dashboard, allowing users to explore trends in reported cases, hospital admissions, and deaths across municipalities and provinces, either monthly or yearly. A major challenge here was ensuring clean and consistent aggregation across different temporal and geographic levels.
@@ -180,7 +131,6 @@ To improve the interpretability of these raw counts, we integrated population da
 Building on that foundation, we decided to extend the dashboard with an interactive choropleth map. This visualization allows users to explore the same statistics spatially, offering additional insights that would be less obvious in bar charts. Making the map flexible and performant was non-trivial — we had to preprocess and aggregate data in advance to avoid laggy rendering, and fine-tune the styling and tooltips for clarity and responsiveness.
 
 ## Conclusion
-
 This project provided a hands-on opportunity to work with real-world datasets, integrating multiple data sources to build a coherent, interactive dashboard.Our implementation includes both a bar chart and an interactive map. These visualizations allow users to explore COVID-19 statistics at different geographic and temporal resolutions.
 
 A key design choice was to include population data to compute incidence rates, which allowed us to move beyond raw counts and present normalized comparisons across regions. This added analytical depth and helped surface insights that would otherwise be obscured by population size differences.
