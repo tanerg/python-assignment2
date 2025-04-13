@@ -446,9 +446,12 @@ def create_interactive_covid_chart(data_file):
 
     # This function updates the available aggregation options based on selections
     def update_aggregation_options(*args):
-        if province_dropdown.value == 'Netherlands':
-            # For nationwide view, only allow Year and Months views
+        if province_dropdown.value in ['Netherlands', 'All Provinces']:
+            # For nationwide or all-provinces view, only allow Year and Months views
             aggregation_radio.options = ['Year', 'Months']
+            # If Municipalities was previously selected, change it to Year
+            if aggregation_radio.value == 'Municipalities':
+                aggregation_radio.value = 'Year'
         elif municipality_dropdown.disabled or municipality_dropdown.value == 'All':
             # For province level, allow all aggregation types
             aggregation_radio.options = ['Year', 'Months', 'Municipalities']
