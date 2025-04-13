@@ -151,9 +151,7 @@ Users can select:
   - Hospital admissions,
   - And their incidence rates per 100,000 inhabitants.
 
-The color scale adapts dynamically based on the selected statistic, and each region provides an informative tooltip showing its name and the selected statistic’s value. The visualization is based on pre-aggregated GeoJSON files to ensure performance, and missing or invalid values are handled gracefully by displaying neutral colors and appropriate tooltips.
-
-This interactive tool enables a clear and intuitive exploration of temporal and regional trends in the pandemic's impact.
+The visualization is based on pre-aggregated GeoJSON files to ensure performance. This interactive tool enables a clear and intuitive exploration of temporal and regional trends in the pandemic's impact.
 
 
 ## Challenges and Resolutions
